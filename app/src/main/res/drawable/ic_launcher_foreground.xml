@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <!-- Chat bubble with three dots cut out, centered in the 66dp safe zone -->
+    <group
+        android:scaleX="1.75"
+        android:scaleY="1.75"
+        android:translateX="33"
+        android:translateY="33">
+        <path
+            android:fillColor="#FF2B5BB5"
+            android:fillType="evenOdd"
+            android:pathData="M20,2H4C2.9,2 2,2.9 2,4v18l4,-4h14c1.1,0 2,-0.9 2,-2V4C22,2.9 21.1,2 20,2z M6.5,10.5a1.5,1.5 0,1 0,3 0a1.5,1.5 0,1 0,-3 0z M10.5,10.5a1.5,1.5 0,1 0,3 0a1.5,1.5 0,1 0,-3 0z M14.5,10.5a1.5,1.5 0,1 0,3 0a1.5,1.5 0,1 0,-3 0z" />
+    </group>
+</vector>
