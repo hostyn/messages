@@ -27,5 +27,5 @@ mkdir -p dist
 "$BUILD_TOOLS/zipalign" -f -p 4 "$UNSIGNED" "$OUT.aligned"
 "$BUILD_TOOLS/apksigner" sign --ks "$KEYSTORE" --ks-key-alias phone --out "$OUT" "$OUT.aligned"
 rm -f "$OUT.aligned" "$OUT.idsig"
-"$BUILD_TOOLS/apksigner" verify --print-certs "$OUT" | grep -E "Signer #1 certificate (DN|SHA-256)"
+"$BUILD_TOOLS/apksigner" verify --print-certs "$OUT" | grep -E "certificate (DN|SHA-256)"
 echo "Signed: $OUT"
