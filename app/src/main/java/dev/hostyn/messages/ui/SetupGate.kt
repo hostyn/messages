@@ -1,5 +1,12 @@
+@file:OptIn(ExperimentalMaterial3ExpressiveApi::class)
+
 package dev.hostyn.messages.ui
 
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.material3.toShape
+import androidx.compose.material3.MaterialShapes
+import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
+import androidx.compose.material3.ButtonDefaults
 import android.Manifest
 import android.app.role.RoleManager
 import android.content.Context
@@ -17,7 +24,6 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.Chat
 import androidx.compose.material3.Button
@@ -96,7 +102,8 @@ fun SetupGate(content: @Composable () -> Unit) {
             verticalArrangement = Arrangement.Center,
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
-            Surface(shape = CircleShape, color = MaterialTheme.colorScheme.primaryContainer, modifier = Modifier.size(112.dp)) {
+            // An expressive shape gives the welcome screen its focal point.
+            Surface(shape = MaterialShapes.Cookie9Sided.toShape(), color = MaterialTheme.colorScheme.primaryContainer, modifier = Modifier.size(128.dp)) {
                 Box(contentAlignment = Alignment.Center) {
                     Icon(
                         Icons.AutoMirrored.Rounded.Chat, null,
@@ -106,7 +113,7 @@ fun SetupGate(content: @Composable () -> Unit) {
                 }
             }
             Spacer(Modifier.height(28.dp))
-            Text(stringResource(R.string.setup_title), style = MaterialTheme.typography.headlineSmall, textAlign = TextAlign.Center)
+            Text(stringResource(R.string.setup_title), style = MaterialTheme.typography.headlineMediumEmphasized, textAlign = TextAlign.Center)
             Spacer(Modifier.height(12.dp))
             Text(
                 stringResource(R.string.setup_body),
@@ -115,8 +122,16 @@ fun SetupGate(content: @Composable () -> Unit) {
                 textAlign = TextAlign.Center,
             )
             Spacer(Modifier.height(32.dp))
-            Button(onClick = { roleLauncher.launch(context.defaultSmsRequest()) }) {
-                Text(stringResource(R.string.set_as_default))
+            Button(
+                onClick = { roleLauncher.launch(context.defaultSmsRequest()) },
+                shapes = ButtonDefaults.shapesFor(ButtonDefaults.MediumContainerHeight),
+                contentPadding = ButtonDefaults.contentPaddingFor(ButtonDefaults.MediumContainerHeight),
+                modifier = Modifier.heightIn(ButtonDefaults.MediumContainerHeight),
+            ) {
+                Text(
+                    stringResource(R.string.set_as_default),
+                    style = ButtonDefaults.textStyleFor(ButtonDefaults.MediumContainerHeight),
+                )
             }
         }
     }

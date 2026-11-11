@@ -1,5 +1,13 @@
+@file:OptIn(ExperimentalMaterial3ExpressiveApi::class)
+
 package dev.hostyn.messages.ui.components
 
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
+import androidx.compose.material3.IconButtonDefaults
+import androidx.compose.material3.MaterialShapes
+import androidx.compose.material3.toShape
+import androidx.compose.foundation.layout.heightIn
 import android.content.Context
 import android.text.format.DateFormat
 import android.text.format.DateUtils
@@ -129,7 +137,7 @@ fun SearchPill(
                 )
             }
             AnimatedVisibility(query.isNotEmpty(), enter = fadeIn(), exit = fadeOut()) {
-                IconButton(onClick = { onQuery(""); focus.clearFocus() }) {
+                IconButton(onClick = { onQuery(""); focus.clearFocus() }, shapes = IconButtonDefaults.shapes()) {
                     Icon(Icons.Rounded.Close, null)
                 }
             }
@@ -145,13 +153,14 @@ fun EmptyState(icon: ImageVector, title: String, body: String, modifier: Modifie
         verticalArrangement = Arrangement.Center,
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
-        Surface(shape = CircleShape, color = MaterialTheme.colorScheme.secondaryContainer, modifier = Modifier.size(88.dp)) {
+        // An expressive shape draws the eye to the empty state's icon.
+        Surface(shape = MaterialShapes.Cookie9Sided.toShape(), color = MaterialTheme.colorScheme.secondaryContainer, modifier = Modifier.size(104.dp)) {
             Box(contentAlignment = Alignment.Center) {
                 Icon(icon, null, tint = MaterialTheme.colorScheme.onSecondaryContainer, modifier = Modifier.size(40.dp))
             }
         }
         Spacer(Modifier.height(20.dp))
-        Text(title, style = MaterialTheme.typography.titleLarge, textAlign = TextAlign.Center)
+        Text(title, style = MaterialTheme.typography.titleLargeEmphasized, textAlign = TextAlign.Center)
         Spacer(Modifier.height(8.dp))
         Text(body, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant, textAlign = TextAlign.Center)
     }
@@ -249,14 +258,15 @@ fun CopyCodeButton(code: String, modifier: Modifier = Modifier) {
     val context = androidx.compose.ui.platform.LocalContext.current
     androidx.compose.material3.FilledTonalButton(
         onClick = { dev.hostyn.messages.otp.copyCode(context, code) },
-        contentPadding = androidx.compose.foundation.layout.PaddingValues(start = 12.dp, end = 16.dp),
-        modifier = modifier.height(36.dp),
+        shapes = ButtonDefaults.shapes(),
+        contentPadding = ButtonDefaults.contentPaddingFor(ButtonDefaults.ExtraSmallContainerHeight),
+        modifier = modifier.heightIn(ButtonDefaults.ExtraSmallContainerHeight),
     ) {
-        Icon(Icons.Rounded.ContentCopy, null, modifier = Modifier.size(18.dp))
-        Spacer(Modifier.width(8.dp))
+        Icon(Icons.Rounded.ContentCopy, null, modifier = Modifier.size(ButtonDefaults.iconSizeFor(ButtonDefaults.ExtraSmallContainerHeight)))
+        Spacer(Modifier.width(ButtonDefaults.iconSpacingFor(ButtonDefaults.ExtraSmallContainerHeight)))
         Text(
             androidx.compose.ui.res.stringResource(R.string.copy_code_value, code),
-            style = MaterialTheme.typography.labelLarge,
+            style = ButtonDefaults.textStyleFor(ButtonDefaults.ExtraSmallContainerHeight),
         )
     }
 }

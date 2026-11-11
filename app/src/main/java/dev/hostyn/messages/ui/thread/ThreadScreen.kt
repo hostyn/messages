@@ -1,5 +1,11 @@
+@file:OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3ExpressiveApi::class)
+
 package dev.hostyn.messages.ui.thread
 
+import dev.hostyn.messages.ui.theme.containerTransform
+import androidx.compose.material3.LoadingIndicator
+import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
+import androidx.compose.material3.ButtonDefaults
 import android.Manifest
 import android.annotation.SuppressLint
 import android.content.ClipData
@@ -40,7 +46,6 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardOptions
@@ -65,7 +70,6 @@ import androidx.compose.material.icons.rounded.Share
 import androidx.compose.material.icons.rounded.SimCard
 import androidx.compose.material.icons.rounded.Videocam
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -104,7 +108,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
-import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
@@ -144,19 +147,22 @@ import java.io.File
 /** Messages closer than this (from the same person) are drawn as one group. */
 private const val GROUP_GAP = 3 * 60 * 1000L
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ThreadScreen(
     threadId: Long,
     initialText: String = "",
     initialAttachments: List<Uri> = emptyList(),
+    transformKey: String? = null,
     onBack: () -> Unit,
 ) {
     val context = LocalContext.current
     val app = MessagesApp.of(context)
     val repo = app.repository
     val scope = rememberCoroutineScope()
-    val recipients by remember(threadId) { repo.recipientsFlow(threadId) }.collectAsState(initial = emptyList())
+    // Start with the recipients the conversation list already knows, so the header is there while
+    // the conversation grows out of its row.
+    val known = remember(threadId) { repo.conversations.value?.firstOrNull { it.threadId == threadId }?.recipients }
+    val recipients by remember(threadId) { repo.recipientsFlow(threadId) }.collectAsState(initial = known.orEmpty())
     val messages by remember(threadId) { repo.messages(threadId) }.collectAsState(initial = null)
     val listState = rememberLazyListState()
 
@@ -218,11 +224,13 @@ fun ThreadScreen(
     }
 
     Scaffold(
+        // Grows out of the conversation's row in the list (container transform).
+        modifier = Modifier.containerTransform(transformKey),
         containerColor = MaterialTheme.colorScheme.surface,
         topBar = {
             TopAppBar(
                 navigationIcon = {
-                    IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Rounded.ArrowBack, stringResource(R.string.back)) }
+                    IconButton(onClick = onBack, shapes = IconButtonDefaults.shapes()) { Icon(Icons.AutoMirrored.Rounded.ArrowBack, stringResource(R.string.back)) }
                 },
                 title = {
                     Row(verticalAlignment = Alignment.CenterVertically) {
@@ -231,7 +239,7 @@ fun ThreadScreen(
                         Column {
                             Text(
                                 recipients.joinToString(", ") { it.displayName },
-                                style = MaterialTheme.typography.titleMedium,
+                                style = MaterialTheme.typography.titleMediumEmphasized,
                                 maxLines = 1, overflow = TextOverflow.Ellipsis,
                             )
                             val subtitle = when {
@@ -250,10 +258,10 @@ fun ThreadScreen(
                 },
                 actions = {
                     if (single != null && single.address.any(Char::isDigit) && single.address.length > 5) {
-                        IconButton(onClick = { context.dial(single.address) }) { Icon(Icons.Rounded.Call, stringResource(R.string.call)) }
+                        IconButton(onClick = { context.dial(single.address) }, shapes = IconButtonDefaults.shapes()) { Icon(Icons.Rounded.Call, stringResource(R.string.call)) }
                     }
                     Box {
-                        IconButton(onClick = { menu = true }) { Icon(Icons.Rounded.MoreVert, stringResource(R.string.more_options)) }
+                        IconButton(onClick = { menu = true }, shapes = IconButtonDefaults.shapes()) { Icon(Icons.Rounded.MoreVert, stringResource(R.string.more_options)) }
                         DropdownMenu(expanded = menu, onDismissRequest = { menu = false }) {
                             if (single != null && single.contactId == null && single.address.any(Char::isDigit)) {
                                 DropdownMenuItem(
@@ -340,13 +348,18 @@ fun ThreadScreen(
             title = { Text(stringResource(R.string.delete_conversation)) },
             text = { Text(stringResource(R.string.delete_conversations_body)) },
             confirmButton = {
-                TextButton(onClick = {
-                    confirmDelete = false
-                    scope.launch(Dispatchers.IO) { repo.deleteThreads(listOf(threadId)) }
-                    onBack()
-                }) { Text(stringResource(R.string.delete)) }
+                TextButton(
+                    onClick = {
+                        confirmDelete = false
+                        scope.launch(Dispatchers.IO) { repo.deleteThreads(listOf(threadId)) }
+                        onBack()
+                    },
+                    shapes = ButtonDefaults.shapes(),
+                ) { Text(stringResource(R.string.delete)) }
             },
-            dismissButton = { TextButton(onClick = { confirmDelete = false }) { Text(stringResource(R.string.cancel)) } },
+            dismissButton = {
+                TextButton(onClick = { confirmDelete = false }, shapes = ButtonDefaults.shapes()) { Text(stringResource(R.string.cancel)) }
+            },
         )
     }
 }
@@ -369,8 +382,10 @@ private fun MessageBubble(
     val context = LocalContext.current
     val outgoing = !m.incoming
     var menu by remember { mutableStateOf(false) }
-    val big = 20.dp
-    val small = 4.dp
+    // Expressive bubbles: rounded corners from the shape scale, tighter ones where messages of
+    // the same group meet.
+    val big = MaterialTheme.shapes.largeIncreased.topStart
+    val small = MaterialTheme.shapes.extraSmall.topStart
     val shape = if (outgoing) {
         RoundedCornerShape(big, if (firstOfGroup) big else small, if (lastOfGroup) big else small, big)
     } else {
@@ -418,13 +433,13 @@ private fun MessageBubble(
                             modifier = Modifier
                                 .widthIn(max = 260.dp)
                                 .heightIn(min = 80.dp, max = 320.dp)
-                                .clip(RoundedCornerShape(16.dp))
+                                .clip(MaterialTheme.shapes.large)
                                 .background(MaterialTheme.colorScheme.surfaceContainerHigh)
                                 .clickable { onOpenAttachment(a) },
                         )
                     }
                     m.attachments.filterNot { it.isImage }.forEach { a ->
-                        Surface(shape = RoundedCornerShape(16.dp), color = container, modifier = Modifier.clickable { onOpenAttachment(a) }) {
+                        Surface(shape = MaterialTheme.shapes.large, color = container, modifier = Modifier.clickable { onOpenAttachment(a) }) {
                             Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp)) {
                                 Icon(
                                     when {
@@ -531,9 +546,9 @@ private fun statusLine(context: Context, m: Message): String {
 @Composable
 private fun PendingMms(m: Message, container: Color, content: Color, onDownload: () -> Unit) {
     val context = LocalContext.current
-    Surface(shape = RoundedCornerShape(20.dp), color = container) {
+    Surface(shape = MaterialTheme.shapes.largeIncreased, color = container) {
         Column(Modifier.padding(16.dp)) {
-            Text(stringResource(R.string.mms_pending), style = MaterialTheme.typography.titleSmall, color = content)
+            Text(stringResource(R.string.mms_pending), style = MaterialTheme.typography.titleSmallEmphasized, color = content)
             if (m.sizeBytes > 0) {
                 Text(
                     Formatter.formatShortFileSize(context, m.sizeBytes),
@@ -544,14 +559,14 @@ private fun PendingMms(m: Message, container: Color, content: Color, onDownload:
             Spacer(Modifier.height(12.dp))
             if (m.downloading) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    CircularProgressIndicator(Modifier.size(20.dp), strokeWidth = 2.dp)
+                    LoadingIndicator(Modifier.size(32.dp))
                     Spacer(Modifier.width(12.dp))
                     Text(stringResource(R.string.downloading), color = content)
                 }
             } else {
-                FilledTonalButton(onClick = onDownload) {
-                    Icon(Icons.Rounded.Download, null, modifier = Modifier.size(18.dp))
-                    Spacer(Modifier.width(8.dp))
+                FilledTonalButton(onClick = onDownload, shapes = ButtonDefaults.shapes()) {
+                    Icon(Icons.Rounded.Download, null, modifier = Modifier.size(ButtonDefaults.IconSize))
+                    Spacer(Modifier.width(ButtonDefaults.IconSpacing))
                     Text(stringResource(R.string.download))
                 }
             }
@@ -585,10 +600,11 @@ private fun Composer(
                         Box {
                             AsyncImage(
                                 model = uri, contentDescription = null, contentScale = ContentScale.Crop,
-                                modifier = Modifier.size(88.dp).clip(RoundedCornerShape(16.dp)).background(MaterialTheme.colorScheme.surfaceContainerHigh),
+                                modifier = Modifier.size(88.dp).clip(MaterialTheme.shapes.large).background(MaterialTheme.colorScheme.surfaceContainerHigh),
                             )
                             FilledIconButton(
                                 onClick = { onRemove(uri) },
+                                shapes = IconButtonDefaults.shapes(),
                                 colors = IconButtonDefaults.filledIconButtonColors(
                                     containerColor = MaterialTheme.colorScheme.inverseSurface,
                                     contentColor = MaterialTheme.colorScheme.inverseOnSurface,
@@ -600,16 +616,16 @@ private fun Composer(
                 }
             }
             Row(verticalAlignment = Alignment.Bottom) {
-                IconButton(onClick = onAttach, modifier = Modifier.padding(bottom = 4.dp)) {
+                IconButton(onClick = onAttach, shapes = IconButtonDefaults.shapes(), modifier = Modifier.padding(bottom = 6.dp)) {
                     Icon(Icons.Rounded.AddPhotoAlternate, stringResource(R.string.attach_photo), tint = MaterialTheme.colorScheme.primary)
                 }
                 Surface(
-                    shape = RoundedCornerShape(28.dp),
+                    shape = MaterialTheme.shapes.extraLarge,
                     color = MaterialTheme.colorScheme.surfaceContainerHigh,
-                    modifier = Modifier.weight(1f).heightIn(min = 52.dp),
+                    modifier = Modifier.weight(1f).heightIn(min = 56.dp),
                 ) {
                     Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(start = 20.dp, end = 4.dp)) {
-                        Box(Modifier.weight(1f).padding(vertical = 14.dp)) {
+                        Box(Modifier.weight(1f).padding(vertical = 16.dp)) {
                             if (text.isEmpty()) {
                                 Text(
                                     stringResource(if (isMms) R.string.compose_mms else R.string.compose_sms),
@@ -630,7 +646,7 @@ private fun Composer(
                         if (sims.size > 1) {
                             Box {
                                 val index = sims.indexOfFirst { it.subscriptionId == subId }.coerceAtLeast(0)
-                                TextButton(onClick = { simMenu = true }, contentPadding = PaddingValues(horizontal = 8.dp)) {
+                                TextButton(onClick = { simMenu = true }, shapes = ButtonDefaults.shapes(), contentPadding = PaddingValues(horizontal = 8.dp)) {
                                     Icon(Icons.Rounded.SimCard, null, modifier = Modifier.size(18.dp))
                                     Text("${index + 1}", style = MaterialTheme.typography.labelLarge)
                                 }
@@ -657,12 +673,14 @@ private fun Composer(
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
                     }
+                    // Medium icon button: round at rest, it squares off while pressed.
                     FilledIconButton(
                         onClick = onSend,
                         enabled = text.isNotBlank() || attachments.isNotEmpty(),
-                        modifier = Modifier.size(52.dp),
+                        shapes = IconButtonDefaults.shapes(IconButtonDefaults.mediumRoundShape, IconButtonDefaults.mediumPressedShape),
+                        modifier = Modifier.size(IconButtonDefaults.mediumContainerSize()),
                     ) {
-                        Icon(Icons.AutoMirrored.Rounded.Send, stringResource(R.string.send))
+                        Icon(Icons.AutoMirrored.Rounded.Send, stringResource(R.string.send), Modifier.size(IconButtonDefaults.mediumIconSize))
                     }
                 }
             }
@@ -682,10 +700,10 @@ private fun ImageViewer(attachment: Attachment, onDismiss: () -> Unit) {
                 modifier = Modifier.fillMaxSize().clickable(onClick = onDismiss),
             )
             Row(Modifier.align(Alignment.TopEnd).padding(top = 32.dp, end = 8.dp)) {
-                IconButton(onClick = { context.shareAttachment(attachment) }) {
+                IconButton(onClick = { context.shareAttachment(attachment) }, shapes = IconButtonDefaults.shapes()) {
                     Icon(Icons.Rounded.Share, stringResource(R.string.share), tint = Color.White)
                 }
-                IconButton(onClick = onDismiss) {
+                IconButton(onClick = onDismiss, shapes = IconButtonDefaults.shapes()) {
                     Icon(Icons.Rounded.Close, stringResource(R.string.close), tint = Color.White)
                 }
             }

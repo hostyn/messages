@@ -1,11 +1,20 @@
+@file:OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3ExpressiveApi::class)
+
 package dev.hostyn.messages.ui.settings
 
+import dev.hostyn.messages.ui.components.segmentedColors
+import dev.hostyn.messages.ui.components.SegmentedGroupScope
+import dev.hostyn.messages.ui.components.SegmentedGroup
+import dev.hostyn.messages.ui.components.ListHeader
+import androidx.compose.material3.SegmentedListItem
+import androidx.compose.material3.LargeFlexibleTopAppBar
+import androidx.compose.material3.IconButtonDefaults
+import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
+import androidx.compose.material3.ButtonDefaults
 import android.content.Intent
 import android.os.Build
 import android.provider.Settings
 import android.widget.Toast
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -14,11 +23,9 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.selection.selectable
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.ArrowBack
 import androidx.compose.material.icons.rounded.Code
@@ -32,11 +39,9 @@ import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.LargeTopAppBar
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -61,7 +66,6 @@ import dev.hostyn.messages.R
 import dev.hostyn.messages.data.AppSettings
 import dev.hostyn.messages.data.ThemeMode
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SettingsScreen(settings: AppSettings, onBack: () -> Unit) {
     val context = LocalContext.current
@@ -78,13 +82,13 @@ fun SettingsScreen(settings: AppSettings, onBack: () -> Unit) {
         modifier = Modifier.nestedScroll(scroll.nestedScrollConnection),
         containerColor = MaterialTheme.colorScheme.surface,
         topBar = {
-            LargeTopAppBar(
+            LargeFlexibleTopAppBar(
                 title = { Text(stringResource(R.string.settings)) },
                 navigationIcon = {
-                    IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Rounded.ArrowBack, stringResource(R.string.back)) }
+                    IconButton(onClick = onBack, shapes = IconButtonDefaults.shapes()) { Icon(Icons.AutoMirrored.Rounded.ArrowBack, stringResource(R.string.back)) }
                 },
                 scrollBehavior = scroll,
-                colors = TopAppBarDefaults.largeTopAppBarColors(containerColor = MaterialTheme.colorScheme.surface),
+                colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.surface),
             )
         },
     ) { padding ->
@@ -94,7 +98,7 @@ fun SettingsScreen(settings: AppSettings, onBack: () -> Unit) {
         ) {
             item {
                 Section(stringResource(R.string.messages_settings)) {
-                    SettingRow(
+                    setting(
                         icon = Icons.Rounded.Notifications,
                         title = stringResource(R.string.notifications),
                         summary = stringResource(R.string.notifications_summary),
@@ -105,14 +109,14 @@ fun SettingsScreen(settings: AppSettings, onBack: () -> Unit) {
                             )
                         },
                     )
-                    SwitchRow(
+                    toggle(
                         icon = Icons.Rounded.DoneAll,
                         title = stringResource(R.string.delivery_reports),
                         summary = stringResource(R.string.delivery_reports_summary),
                         checked = settings.deliveryReports,
                         onChange = settings::updateDeliveryReports,
                     )
-                    SwitchRow(
+                    toggle(
                         icon = Icons.Rounded.Download,
                         title = stringResource(R.string.auto_download_mms),
                         summary = stringResource(R.string.auto_download_mms_summary),
@@ -123,14 +127,14 @@ fun SettingsScreen(settings: AppSettings, onBack: () -> Unit) {
             }
             item {
                 Section(stringResource(R.string.appearance)) {
-                    SettingRow(
+                    setting(
                         icon = Icons.Rounded.DarkMode,
                         title = stringResource(R.string.theme),
                         summary = stringResource(themeLabel(settings.theme)),
                         onClick = { choosingTheme = true },
                     )
                     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-                        SwitchRow(
+                        toggle(
                             icon = Icons.Rounded.Palette,
                             title = stringResource(R.string.dynamic_color),
                             summary = stringResource(R.string.dynamic_color_summary),
@@ -145,8 +149,8 @@ fun SettingsScreen(settings: AppSettings, onBack: () -> Unit) {
                     val version = remember {
                         try { context.packageManager.getPackageInfo(context.packageName, 0).versionName } catch (_: Exception) { null }
                     }
-                    SettingRow(icon = Icons.Rounded.Info, title = stringResource(R.string.version), summary = version.orEmpty())
-                    SettingRow(
+                    setting(icon = Icons.Rounded.Info, title = stringResource(R.string.version), summary = version.orEmpty())
+                    setting(
                         icon = Icons.Rounded.Code,
                         title = stringResource(R.string.source_code),
                         summary = "github.com/hostyn/messages",
@@ -186,7 +190,7 @@ private fun ChoiceDialog(title: String, labels: List<String>, selected: Int, onS
                         verticalAlignment = Alignment.CenterVertically,
                         modifier = Modifier
                             .fillMaxWidth()
-                            .clip(RoundedCornerShape(12.dp))
+                            .clip(MaterialTheme.shapes.medium)
                             .selectable(selected = i == selected, role = Role.RadioButton) {
                                 onSelect(i)
                                 onDismiss()
@@ -200,60 +204,60 @@ private fun ChoiceDialog(title: String, labels: List<String>, selected: Int, onS
                 }
             }
         },
-        confirmButton = { TextButton(onClick = onDismiss) { Text(stringResource(R.string.cancel)) } },
+        confirmButton = { TextButton(onClick = onDismiss, shapes = ButtonDefaults.shapes()) { Text(stringResource(R.string.cancel)) } },
     )
 }
 
+/** A titled M3 segmented list of settings. */
+// Inline, like SegmentedGroup, so a switch's new value redraws its item (see SegmentedGroup).
 @Composable
-private fun Section(title: String, content: @Composable () -> Unit) {
-    Text(
-        title,
-        style = MaterialTheme.typography.titleSmall,
-        color = MaterialTheme.colorScheme.primary,
-        modifier = Modifier.padding(start = 76.dp, top = 24.dp, bottom = 4.dp),
-    )
-    Surface(
-        shape = RoundedCornerShape(28.dp),
-        color = MaterialTheme.colorScheme.surfaceContainer,
-        modifier = Modifier.padding(horizontal = 12.dp).fillMaxWidth(),
-    ) {
-        Column(Modifier.padding(vertical = 8.dp)) { content() }
-    }
+private inline fun Section(title: String, content: @Composable SegmentedGroupScope.() -> Unit) {
+    ListHeader(title, Modifier.padding(top = 8.dp))
+    SegmentedGroup(content = content)
 }
 
-@Composable
-private fun SettingRow(
+/** A setting: tap to change it, or plain information without [onClick]. */
+private fun SegmentedGroupScope.setting(
     icon: ImageVector,
     title: String,
     summary: String? = null,
     onClick: (() -> Unit)? = null,
-    trailing: (@Composable () -> Unit)? = null,
-) {
-    Row(
-        verticalAlignment = Alignment.CenterVertically,
-        modifier = Modifier
-            .fillMaxWidth()
-            .then(if (onClick != null) Modifier.clickable(onClick = onClick) else Modifier)
-            .padding(horizontal = 20.dp, vertical = 14.dp),
-    ) {
-        Icon(icon, null, tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(24.dp))
-        Spacer(Modifier.width(20.dp))
-        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-            Text(title, style = MaterialTheme.typography.bodyLarge)
-            if (!summary.isNullOrEmpty()) {
-                Text(summary, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-            }
-        }
-        if (trailing != null) {
-            Spacer(Modifier.width(12.dp))
-            trailing()
-        }
+) = item { shapes ->
+    val leading: @Composable () -> Unit = { Icon(icon, null) }
+    val supporting: (@Composable () -> Unit)? = summary?.takeIf { it.isNotEmpty() }?.let { { Text(it) } }
+    if (onClick != null) {
+        SegmentedListItem(
+            onClick = onClick,
+            shapes = shapes,
+            colors = segmentedColors(),
+            leadingContent = leading,
+            supportingContent = supporting,
+        ) { Text(title) }
+    } else {
+        SegmentedListItem(
+            shapes = shapes,
+            colors = segmentedColors(),
+            leadingContent = leading,
+            supportingContent = supporting,
+        ) { Text(title) }
     }
 }
 
-@Composable
-private fun SwitchRow(icon: ImageVector, title: String, summary: String? = null, checked: Boolean, onChange: (Boolean) -> Unit) {
-    SettingRow(icon = icon, title = title, summary = summary, onClick = { onChange(!checked) }) {
-        Switch(checked = checked, onCheckedChange = onChange)
-    }
+/** An on/off setting: the whole item toggles the switch. */
+private fun SegmentedGroupScope.toggle(
+    icon: ImageVector,
+    title: String,
+    summary: String? = null,
+    checked: Boolean,
+    onChange: (Boolean) -> Unit,
+) = item { shapes ->
+    SegmentedListItem(
+        checked = checked,
+        onCheckedChange = onChange,
+        shapes = shapes,
+        colors = segmentedColors(),
+        leadingContent = { Icon(icon, null) },
+        supportingContent = summary?.let { { Text(it) } },
+        trailingContent = { Switch(checked = checked, onCheckedChange = null) },
+    ) { Text(title) }
 }

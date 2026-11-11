@@ -28,6 +28,11 @@ import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.stateIn
 
 /** Reads and changes conversations and messages in the system Telephony provider. */
 class MessagesRepository(private val context: Context, val contacts: Contacts) {
@@ -47,8 +52,15 @@ class MessagesRepository(private val context: Context, val contacts: Contacts) {
         awaitClose { resolver.unregisterContentObserver(observer) }
     }.buffer(Channel.CONFLATED).debounce(150)
 
-    fun conversations(): Flow<List<Conversation>> =
+    private val cacheScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
+
+    /**
+     * The conversation list, kept for a minute after the list screen goes away: coming back from a
+     * conversation shows it at once, so the conversation can shrink back into its row.
+     */
+    val conversations: StateFlow<List<Conversation>?> =
         changes().map { queryConversations() }.conflate().flowOn(Dispatchers.IO)
+            .stateIn(cacheScope, SharingStarted.WhileSubscribed(60_000), null)
 
     fun messages(threadId: Long): Flow<List<Message>> =
         changes().map { queryMessages(threadId) }.conflate().flowOn(Dispatchers.IO)

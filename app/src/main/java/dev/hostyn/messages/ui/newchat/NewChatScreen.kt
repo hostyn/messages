@@ -1,8 +1,23 @@
+@file:OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3ExpressiveApi::class)
+
 package dev.hostyn.messages.ui.newchat
 
+import dev.hostyn.messages.ui.theme.containerTransform
+import dev.hostyn.messages.ui.components.segmentedColors
+import androidx.compose.ui.platform.LocalView
+import androidx.compose.material3.SegmentedListItem
+import androidx.compose.material3.ListItemDefaults
+import androidx.compose.material3.IconButtonDefaults
+import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
+import androidx.compose.material.icons.rounded.Check
+import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.animation.scaleOut
+import androidx.compose.animation.scaleIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.AnimatedVisibility
+import android.view.HapticFeedbackConstants
 import android.telephony.PhoneNumberUtils
-import androidx.compose.foundation.ExperimentalFoundationApi
-import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -25,7 +40,6 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.ArrowBack
 import androidx.compose.material.icons.automirrored.rounded.ArrowForward
-import androidx.compose.material.icons.rounded.CheckCircle
 import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material.icons.rounded.Dialpad
 import androidx.compose.material.icons.rounded.Keyboard
@@ -76,9 +90,8 @@ import kotlinx.coroutines.withContext
 private data class Picked(val address: String, val name: String?, val photoUri: String?, val contactId: Long?)
 
 /** Pick one or more recipients, then open (or create) their conversation. */
-@OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
 @Composable
-fun NewChatScreen(onBack: () -> Unit, onOpen: (Long) -> Unit) {
+fun NewChatScreen(transformKey: String? = null, onBack: () -> Unit, onOpen: (Long) -> Unit) {
     val context = LocalContext.current
     val app = MessagesApp.of(context)
     val scope = rememberCoroutineScope()
@@ -124,15 +137,18 @@ fun NewChatScreen(onBack: () -> Unit, onOpen: (Long) -> Unit) {
     }
 
     Scaffold(
+        // Grows out of the list's FAB (container transform).
+        modifier = Modifier.containerTransform(transformKey),
+        containerColor = MaterialTheme.colorScheme.surface,
         topBar = {
             TopAppBar(
-                navigationIcon = { IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Rounded.ArrowBack, stringResource(R.string.back)) } },
+                navigationIcon = { IconButton(onClick = onBack, shapes = IconButtonDefaults.shapes()) { Icon(Icons.AutoMirrored.Rounded.ArrowBack, stringResource(R.string.back)) } },
                 title = { Text(stringResource(R.string.new_conversation)) },
                 colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.surface),
             )
         },
         floatingActionButton = {
-            if (picked.isNotEmpty()) {
+            AnimatedVisibility(picked.isNotEmpty(), enter = scaleIn() + fadeIn(), exit = scaleOut() + fadeOut()) {
                 ExtendedFloatingActionButton(
                     onClick = { open(picked.toList()) },
                     icon = { Icon(Icons.AutoMirrored.Rounded.ArrowForward, null) },
@@ -179,7 +195,7 @@ fun NewChatScreen(onBack: () -> Unit, onOpen: (Long) -> Unit) {
                             modifier = Modifier.fillMaxWidth().focusRequester(focus),
                         )
                     }
-                    IconButton(onClick = { dialpad = !dialpad; focus.requestFocus() }) {
+                    IconButton(onClick = { dialpad = !dialpad; focus.requestFocus() }, shapes = IconButtonDefaults.shapes()) {
                         Icon(
                             if (dialpad) Icons.Rounded.Keyboard else Icons.Rounded.Dialpad,
                             stringResource(if (dialpad) R.string.keyboard_text else R.string.keyboard_numbers),
@@ -203,67 +219,101 @@ fun NewChatScreen(onBack: () -> Unit, onOpen: (Long) -> Unit) {
                     }
                 }
             }
-            LazyColumn(contentPadding = PaddingValues(bottom = 96.dp), modifier = Modifier.weight(1f).imePadding()) {
+            val count = results.size + if (typedNumber != null) 1 else 0
+            LazyColumn(
+                contentPadding = PaddingValues(top = 8.dp, bottom = 96.dp),
+                modifier = Modifier.weight(1f).imePadding(),
+            ) {
                 if (typedNumber != null) {
                     item(key = "typed") {
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .combinedClickable(
-                                    onClick = { tapOrToggle(Picked(typedNumber, null, null, null)) },
-                                    onLongClick = { toggle(Picked(typedNumber, null, null, null)) },
-                                )
-                                .padding(horizontal = 16.dp, vertical = 10.dp),
-                        ) {
-                            Surface(shape = CircleShape, color = MaterialTheme.colorScheme.primaryContainer, modifier = Modifier.size(44.dp)) {
-                                Box(contentAlignment = Alignment.Center) {
-                                    Icon(Icons.Rounded.Person, null, tint = MaterialTheme.colorScheme.onPrimaryContainer)
+                        val number = PhoneNumberUtils.formatNumber(typedNumber, java.util.Locale.getDefault().country) ?: typedNumber
+                        val p = Picked(typedNumber, null, null, null)
+                        RecipientRow(
+                            index = 0,
+                            count = count,
+                            selected = picked.any { sameAddress(it.address, typedNumber) },
+                            onClick = { tapOrToggle(p) },
+                            onLongClick = { toggle(p) },
+                            avatar = {
+                                Surface(shape = CircleShape, color = MaterialTheme.colorScheme.primaryContainer, modifier = Modifier.size(40.dp)) {
+                                    Box(contentAlignment = Alignment.Center) {
+                                        Icon(Icons.Rounded.Person, null, tint = MaterialTheme.colorScheme.onPrimaryContainer)
+                                    }
                                 }
-                            }
-                            Spacer(Modifier.width(16.dp))
-                            Column {
-                                Text(stringResource(R.string.send_to_number, PhoneNumberUtils.formatNumber(typedNumber, java.util.Locale.getDefault().country) ?: typedNumber))
-                            }
-                        }
+                            },
+                            title = stringResource(R.string.send_to_number, number),
+                            subtitle = null,
+                        )
                     }
                 }
-                items(results, key = { "${it.contactId}:${it.number}" }) { p ->
-                    val selected = picked.any { sameAddress(it.address, p.number) }
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .combinedClickable(
-                                // A tap opens the chat; a long press starts picking several people for a group.
-                                onClick = { tapOrToggle(Picked(p.number, p.name, p.photoUri, p.contactId)) },
-                                onLongClick = { toggle(Picked(p.number, p.name, p.photoUri, p.contactId)) },
-                            )
-                            .padding(horizontal = 16.dp, vertical = 10.dp),
-                    ) {
-                        Box {
-                            ContactAvatar(p.name, p.photoUri, p.contactId, size = 44.dp)
-                            if (selected) {
-                                Icon(
-                                    Icons.Rounded.CheckCircle, null,
-                                    tint = MaterialTheme.colorScheme.primary,
-                                    modifier = Modifier.align(Alignment.BottomEnd).size(18.dp),
-                                )
-                            }
-                        }
-                        Spacer(Modifier.width(16.dp))
-                        Column(Modifier.weight(1f)) {
-                            Text(p.name, style = MaterialTheme.typography.bodyLarge, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                            Text(
-                                listOfNotNull(p.label, p.number).joinToString(" · "),
-                                style = MaterialTheme.typography.bodyMedium,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                maxLines = 1,
-                            )
-                        }
-                    }
+                itemsIndexed(results, key = { _, p -> "${p.contactId}:${p.number}" }) { i, p ->
+                    val picked1 = Picked(p.number, p.name, p.photoUri, p.contactId)
+                    RecipientRow(
+                        index = i + if (typedNumber != null) 1 else 0,
+                        count = count,
+                        selected = picked.any { sameAddress(it.address, p.number) },
+                        // A tap opens the chat; a long press starts picking several people for a group.
+                        onClick = { tapOrToggle(picked1) },
+                        onLongClick = { toggle(picked1) },
+                        avatar = { ContactAvatar(p.name, p.photoUri, p.contactId, size = 40.dp) },
+                        title = p.name,
+                        subtitle = listOfNotNull(p.label, p.number).joinToString(" · "),
+                    )
                 }
             }
+        }
+    }
+}
+
+/** A person (or a typed number) in the recipient list: a segmented item that can be selected. */
+@Composable
+private fun RecipientRow(
+    index: Int,
+    count: Int,
+    selected: Boolean,
+    onClick: () -> Unit,
+    onLongClick: () -> Unit,
+    avatar: @Composable () -> Unit,
+    title: String,
+    subtitle: String?,
+) {
+    val view = LocalView.current
+    Box(
+        Modifier
+            .padding(horizontal = 16.dp)
+            .padding(bottom = if (index == count - 1) 0.dp else ListItemDefaults.SegmentedGap),
+    ) {
+        SegmentedListItem(
+            selected = selected,
+            onClick = onClick,
+            onLongClick = {
+                view.performHapticFeedback(HapticFeedbackConstants.LONG_PRESS)
+                onLongClick()
+            },
+            onLongClickLabel = stringResource(R.string.select),
+            shapes = ListItemDefaults.segmentedShapes(index, count),
+            colors = segmentedColors(),
+            leadingContent = {
+                Box {
+                    avatar()
+                    AnimatedVisibility(
+                        selected,
+                        enter = scaleIn() + fadeIn(),
+                        exit = scaleOut() + fadeOut(),
+                        modifier = Modifier.matchParentSize(),
+                    ) {
+                        Surface(shape = CircleShape, color = MaterialTheme.colorScheme.primary) {
+                            Box(contentAlignment = Alignment.Center) {
+                                Icon(Icons.Rounded.Check, null, tint = MaterialTheme.colorScheme.onPrimary)
+                            }
+                        }
+                    }
+                }
+            },
+            supportingContent = subtitle?.let { { Text(it, maxLines = 1) } },
+            modifier = Modifier.fillMaxWidth(),
+        ) {
+            Text(title, maxLines = 1, overflow = TextOverflow.Ellipsis)
         }
     }
 }

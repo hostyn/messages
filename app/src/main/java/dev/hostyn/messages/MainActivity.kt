@@ -7,20 +7,23 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
-import androidx.compose.animation.AnimatedContentTransitionScope.SlideDirection
-import androidx.compose.animation.core.tween
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
+import androidx.compose.animation.ExperimentalSharedTransitionApi
+import androidx.compose.animation.SharedTransitionLayout
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalDensity
+import androidx.navigation.NamedNavArgument
+import androidx.navigation.NavBackStackEntry
+import androidx.navigation.NavGraphBuilder
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
@@ -32,7 +35,17 @@ import dev.hostyn.messages.ui.SetupGate
 import dev.hostyn.messages.ui.conversations.ConversationsScreen
 import dev.hostyn.messages.ui.newchat.NewChatScreen
 import dev.hostyn.messages.ui.settings.SettingsScreen
+import dev.hostyn.messages.ui.theme.LocalNavAnimatedScope
+import dev.hostyn.messages.ui.theme.LocalSharedTransitionScope
+import dev.hostyn.messages.ui.theme.LocalTransformOrigin
 import dev.hostyn.messages.ui.theme.MessagesTheme
+import dev.hostyn.messages.ui.theme.TransformOrigin
+import dev.hostyn.messages.ui.theme.backwardEnter
+import dev.hostyn.messages.ui.theme.backwardExit
+import dev.hostyn.messages.ui.theme.forwardEnter
+import dev.hostyn.messages.ui.theme.forwardExit
+import dev.hostyn.messages.ui.theme.transformEnter
+import dev.hostyn.messages.ui.theme.transformExit
 import dev.hostyn.messages.ui.thread.ThreadScreen
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.filterNotNull
@@ -111,6 +124,7 @@ private inline fun <reified T : android.os.Parcelable> Intent.parcelable(key: St
 private inline fun <reified T : android.os.Parcelable> Intent.parcelableList(key: String): List<T> =
     (if (Build.VERSION.SDK_INT >= 33) getParcelableArrayListExtra(key, T::class.java) else getParcelableArrayListExtra(key)).orEmpty()
 
+@OptIn(ExperimentalSharedTransitionApi::class)
 @Composable
 private fun AppNavigation(app: MessagesApp, request: MutableState<OpenRequest?>) {
     val nav = rememberNavController()
@@ -136,35 +150,52 @@ private fun AppNavigation(app: MessagesApp, request: MutableState<OpenRequest?>)
         }
     }
 
+    val density = LocalDensity.current
+    val origin = remember { TransformOrigin() }
+    /** [route], plus the element it grows out of if a row or button just asked for a container transform. */
+    fun withOrigin(route: String): String {
+        val key = origin.take() ?: return route
+        return route + (if ('?' in route) "&" else "?") + "from=" + Uri.encode(key)
+    }
+
+    SharedTransitionLayout {
+    CompositionLocalProvider(LocalSharedTransitionScope provides this, LocalTransformOrigin provides origin) {
     NavHost(
         navController = nav,
         startDestination = "list",
         modifier = Modifier.fillMaxSize().background(MaterialTheme.colorScheme.surface),
-        enterTransition = { slideIntoContainer(SlideDirection.Start, tween(300), initialOffset = { it / 5 }) + fadeIn(tween(300)) },
-        exitTransition = { fadeOut(tween(200)) },
-        popEnterTransition = { fadeIn(tween(300)) },
-        popExitTransition = { slideOutOfContainer(SlideDirection.End, tween(300), targetOffset = { it / 5 }) + fadeOut(tween(200)) },
+        // M3 forward and backward pattern; screens opened with a container transform only fade
+        // underneath it.
+        enterTransition = { if (targetState.transformKey() != null) transformEnter() else density.forwardEnter() },
+        exitTransition = { if (targetState.transformKey() != null) transformExit() else density.forwardExit() },
+        popEnterTransition = { if (initialState.transformKey() != null) transformEnter() else density.backwardEnter() },
+        popExitTransition = { if (initialState.transformKey() != null) transformExit() else density.backwardExit() },
     ) {
-        composable("list") {
+        screen("list") {
             ConversationsScreen(
                 repo = app.repository,
-                onOpen = { nav.navigate("thread/$it") },
-                onNewChat = { nav.navigate("new") },
+                onOpen = { nav.navigate(withOrigin("thread/$it")) },
+                onNewChat = { nav.navigate(withOrigin("new")) },
                 onSettings = { nav.navigate("settings") },
             )
         }
-        composable("thread/{id}", arguments = listOf(navArgument("id") { type = NavType.LongType })) { entry ->
+        screen(
+            "thread/{id}?from={from}",
+            listOf(navArgument("id") { type = NavType.LongType }, fromArgument()),
+        ) { entry ->
             val id = entry.arguments!!.getLong("id")
             val draft = remember(id) { drafts.remove(id) }
             ThreadScreen(
                 threadId = id,
                 initialText = draft?.text.orEmpty(),
                 initialAttachments = draft?.attachments.orEmpty(),
+                transformKey = entry.transformKey(),
                 onBack = { if (!nav.popBackStack()) nav.navigate("list") },
             )
         }
-        composable("new") {
+        screen("new?from={from}", listOf(fromArgument())) { entry ->
             NewChatScreen(
+                transformKey = entry.transformKey(),
                 onBack = { pendingShare.value = null; nav.popBackStack() },
                 onOpen = { id ->
                     pendingShare.value?.let { drafts[id] = it }
@@ -173,8 +204,26 @@ private fun AppNavigation(app: MessagesApp, request: MutableState<OpenRequest?>)
                 },
             )
         }
-        composable("settings") {
+        screen("settings") {
             SettingsScreen(settings = app.settings, onBack = { nav.popBackStack() })
         }
+    }
+    }
+    }
+}
+
+private fun fromArgument() = navArgument("from") { type = NavType.StringType; nullable = true; defaultValue = null }
+
+/** The element this screen grows out of (container transform), if it was opened from one. */
+private fun NavBackStackEntry.transformKey(): String? = arguments?.getString("from")
+
+/** A destination whose content can take part in container transforms. */
+private fun NavGraphBuilder.screen(
+    route: String,
+    arguments: List<NamedNavArgument> = emptyList(),
+    content: @Composable (NavBackStackEntry) -> Unit,
+) {
+    composable(route, arguments) { entry ->
+        CompositionLocalProvider(LocalNavAnimatedScope provides this) { content(entry) }
     }
 }

@@ -17,6 +17,7 @@
     <string name="cancel">Cancelar</string>
     <string name="back">Atrás</string>
     <string name="close">Cerrar</string>
+    <string name="select">Seleccionar</string>
     <string name="no_conversations">Aún no hay conversaciones</string>
     <string name="no_conversations_body">Los mensajes que envíes y recibas aparecerán aquí.</string>
     <string name="no_results">Sin resultados</string>
