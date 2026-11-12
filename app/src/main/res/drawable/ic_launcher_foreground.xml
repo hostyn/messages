@@ -4,15 +4,13 @@
     android:height="108dp"
     android:viewportWidth="108"
     android:viewportHeight="108">
-    <!-- Chat bubble with three dots cut out, centered in the 66dp safe zone -->
-    <group
-        android:scaleX="1.75"
-        android:scaleY="1.75"
-        android:translateX="33"
-        android:translateY="33">
-        <path
-            android:fillColor="#FF2B5BB5"
-            android:fillType="evenOdd"
-            android:pathData="M20,2H4C2.9,2 2,2.9 2,4v18l4,-4h14c1.1,0 2,-0.9 2,-2V4C22,2.9 21.1,2 20,2z M6.5,10.5a1.5,1.5 0,1 0,3 0a1.5,1.5 0,1 0,-3 0z M10.5,10.5a1.5,1.5 0,1 0,3 0a1.5,1.5 0,1 0,-3 0z M14.5,10.5a1.5,1.5 0,1 0,3 0a1.5,1.5 0,1 0,-3 0z" />
-    </group>
+    <!-- Two chat bubbles, one behind the other, in two tones. -->
+    <path
+        android:fillColor="#FF7FA3EB"
+        android:fillType="evenOdd"
+        android:pathData="M51,39 h15 a3,3 0 0,1 3,3 V60 l-4.5,-4.5 H60.75 V52.5 a5.25,5.25 0 0,0 -5.25,-5.25 H48 V42 a3,3 0 0,1 3,-3 z" />
+    <path
+        android:fillColor="#FF2B5BB5"
+        android:fillType="evenOdd"
+        android:pathData="M43.5,49.5 h12 a3,3 0 0,1 3,3 v9 a3,3 0 0,1 -3,3 H46.5 l-6,4.5 V52.5 a3,3 0 0,1 3,-3 z" />
 </vector>
