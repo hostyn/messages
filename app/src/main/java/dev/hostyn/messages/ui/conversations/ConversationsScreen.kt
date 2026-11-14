@@ -119,6 +119,7 @@ fun ConversationsScreen(
         val q = query.trim().foldAccents()
         conversations.orEmpty().filter { c ->
             q.isEmpty() || c.title.foldAccents().contains(q) || c.snippet.foldAccents().contains(q) ||
+                c.recipients.any { r -> r.otherNames.any { it.foldAccents().contains(q) } } ||
                 c.recipients.any { r -> r.address.filter(Char::isDigit).contains(q.filter(Char::isDigit).ifEmpty { "\u0000" }) }
         }
     }

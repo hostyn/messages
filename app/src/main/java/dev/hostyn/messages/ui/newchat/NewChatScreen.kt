@@ -109,8 +109,7 @@ fun NewChatScreen(transformKey: String? = null, onBack: () -> Unit, onOpen: (Lon
     val results = remember(phones, folded, digits) {
         if (folded.isEmpty()) phones
         else phones.filter { p ->
-            p.name.foldAccents().split(' ').any { it.startsWith(folded) } ||
-                p.name.foldAccents().contains(folded) ||
+            (listOf(p.name) + p.otherNames).any { it.foldAccents().contains(folded) } ||
                 (digits.length >= 3 && p.number.filter(Char::isDigit).contains(digits))
         }
     }

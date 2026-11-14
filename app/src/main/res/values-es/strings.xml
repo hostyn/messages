@@ -81,6 +81,8 @@
     <string name="delivery_reports_summary">Muestra cuándo llega un mensaje al otro teléfono</string>
     <string name="auto_download_mms">Descargar MMS automáticamente</string>
     <string name="auto_download_mms_summary">Descarga fotos y mensajes de grupo en cuanto llegan</string>
+    <string name="prefer_nicknames">Mostrar apodos</string>
+    <string name="prefer_nicknames_summary">«Abuela» en vez del nombre completo, si el contacto tiene apodo</string>
     <string name="appearance">Apariencia</string>
     <string name="theme">Tema</string>
     <string name="theme_system">Predeterminado del sistema</string>

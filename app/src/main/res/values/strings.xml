@@ -87,6 +87,8 @@
     <string name="delivery_reports_summary">Show when a message reaches the other phone</string>
     <string name="auto_download_mms">Auto-download MMS</string>
     <string name="auto_download_mms_summary">Download photos and group messages as soon as they arrive</string>
+    <string name="prefer_nicknames">Show nicknames</string>
+    <string name="prefer_nicknames_summary">“Grandma” instead of the full name, when a contact has a nickname</string>
     <string name="appearance">Appearance</string>
     <string name="theme">Theme</string>
     <string name="theme_system">System default</string>

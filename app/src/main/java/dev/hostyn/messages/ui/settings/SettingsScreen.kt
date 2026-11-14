@@ -32,6 +32,7 @@ import androidx.compose.material.icons.rounded.Code
 import androidx.compose.material.icons.rounded.DarkMode
 import androidx.compose.material.icons.rounded.DoneAll
 import androidx.compose.material.icons.rounded.Download
+import androidx.compose.material.icons.rounded.Face
 import androidx.compose.material.icons.rounded.Info
 import androidx.compose.material.icons.rounded.Notifications
 import androidx.compose.material.icons.rounded.Palette
@@ -122,6 +123,13 @@ fun SettingsScreen(settings: AppSettings, onBack: () -> Unit) {
                         summary = stringResource(R.string.auto_download_mms_summary),
                         checked = settings.autoDownloadMms,
                         onChange = settings::updateAutoDownloadMms,
+                    )
+                    toggle(
+                        icon = Icons.Rounded.Face,
+                        title = stringResource(R.string.prefer_nicknames),
+                        summary = stringResource(R.string.prefer_nicknames_summary),
+                        checked = settings.preferNicknames,
+                        onChange = settings::updatePreferNicknames,
                     )
                 }
             }

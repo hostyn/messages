@@ -8,6 +8,8 @@ data class Recipient(
     val name: String? = null,
     val photoUri: String? = null,
     val contactId: Long? = null,
+    /** Other names search also finds: the full name when [name] is a visible name or nickname, the nickname. */
+    val otherNames: List<String> = emptyList(),
 ) {
     val displayName get() = name ?: address
     /** Stable seed for the avatar color. */
@@ -74,4 +76,6 @@ data class ContactPhone(
     val number: String,
     val label: String?,
     val photoUri: String?,
+    /** Other names search also finds (see [Recipient.otherNames]). */
+    val otherNames: List<String> = emptyList(),
 )

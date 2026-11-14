@@ -31,4 +31,9 @@ class AppSettings(context: Context) {
     var autoDownloadMms by mutableStateOf(prefs.getBoolean("auto_download_mms", true))
         private set
     fun updateAutoDownloadMms(value: Boolean) { autoDownloadMms = value; prefs.edit().putBoolean("auto_download_mms", value).apply() }
+
+    /** Show a contact's nickname ("Grandma") instead of their name, wherever the name appears. */
+    var preferNicknames by mutableStateOf(prefs.getBoolean("prefer_nicknames", true))
+        private set
+    fun updatePreferNicknames(value: Boolean) { preferNicknames = value; prefs.edit().putBoolean("prefer_nicknames", value).apply() }
 }

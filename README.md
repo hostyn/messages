@@ -40,6 +40,7 @@ The code is copied as sensitive, so Android hides it in clipboard previews. Dete
 ### Conversations
 - Search, unread markers, multi-select to mark read/unread or delete.
 - New conversation from contacts or any number; long-press to pick several people for a group.
+- Contacts are shown by the name their account gives them ("Grandma Tere", not only first name and surnames) or, if you like, by their nickname; search finds any of their names.
 - Opens from other apps (`sms:`, `smsto:`, `mms:` links) and receives shared text and photos.
 
 ### Settings

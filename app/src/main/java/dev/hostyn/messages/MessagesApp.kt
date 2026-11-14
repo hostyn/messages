@@ -12,7 +12,7 @@ import kotlinx.coroutines.SupervisorJob
 
 class MessagesApp : Application() {
     val settings by lazy { AppSettings(this) }
-    val contacts by lazy { Contacts(this) }
+    val contacts by lazy { Contacts(this, settings) }
     val repository by lazy { MessagesRepository(this, contacts) }
 
     /** For work started by receivers and the UI that must outlive a screen. */

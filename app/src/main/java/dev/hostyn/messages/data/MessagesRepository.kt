@@ -17,7 +17,10 @@ import dev.hostyn.messages.R
 import dev.hostyn.messages.mms.DownloadState
 import dev.hostyn.messages.mms.MessageType
 import dev.hostyn.messages.mms.charsetFor
+import androidx.compose.runtime.snapshotFlow
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.drop
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
@@ -38,7 +41,7 @@ import kotlinx.coroutines.flow.stateIn
 class MessagesRepository(private val context: Context, val contacts: Contacts) {
     private val resolver = context.contentResolver
 
-    /** Emits once now and again (debounced) whenever messages or contacts change. */
+    /** Emits once now and again (debounced) whenever messages, contacts or how they are named change. */
     @OptIn(FlowPreview::class)
     fun changes(): Flow<Unit> = callbackFlow {
         val observer = object : ContentObserver(Handler(Looper.getMainLooper())) {
@@ -48,6 +51,7 @@ class MessagesRepository(private val context: Context, val contacts: Contacts) {
         }
         listOf(MmsSms.CONTENT_URI, Sms.CONTENT_URI, Mms.CONTENT_URI, ContactsContract.Contacts.CONTENT_URI)
             .forEach { resolver.registerContentObserver(it, true, observer) }
+        launch { snapshotFlow { contacts.preferNicknames }.drop(1).collect { trySend(Unit) } }
         trySend(Unit)
         awaitClose { resolver.unregisterContentObserver(observer) }
     }.buffer(Channel.CONFLATED).debounce(150)
