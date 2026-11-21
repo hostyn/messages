@@ -105,7 +105,8 @@ object Notifications {
             style.isGroupConversation = true
             style.conversationTitle = recipients.joinToString(", ") { it.displayName }
         }
-        unread.takeLast(8).forEach { m -> style.addMessage(notificationText(context, m), m.date, person(m.sender)) }
+        // Only the newest unread message; the count still goes on the badge via setNumber.
+        unread.last().let { m -> style.addMessage(notificationText(context, m), m.date, person(m.sender)) }
 
         val reply = NotificationCompat.Action.Builder(
             R.drawable.ic_stat_reply, context.getString(R.string.reply),
