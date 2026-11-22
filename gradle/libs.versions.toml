@@ -8,7 +8,7 @@ composeBom = "2026.09.00"
 navigation = "2.8.5"
 coil = "2.7.0"
 junit = "4.13.2"
-material3 = "1.5.0-rc01"
+material3 = "1.5.0"
 graphicsShapes = "1.1.0"
 materialComponents = "1.14.0"
 
